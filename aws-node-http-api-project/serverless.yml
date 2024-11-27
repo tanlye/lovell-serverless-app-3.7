@@ -1,0 +1,43 @@
+org: tanlye
+app: serverless-m
+service: lovell-serverless-sqs-s3
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sqs:SendMessage"
+        - "sqs:GetQueueUrl"
+      Resource: "arn:aws:sqs:us-east-1:255945442255:lovell-trigger-queue"
+    - Effect: "Allow"
+      Action:
+        - "sqs:ListQueues"
+      Resource: "arn:aws:sqs:us-east-1:255945442255:lovell-trigger-queue:*"
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource: "*"
+
+# trigger when object is created in S3 or messages added to SQS queue
+functions:
+  resize:
+    handler: resize.handler
+    events:
+      - s3:
+          bucket: lovell-trigger-bucket-new
+          event: s3:ObjectCreated:*
+  compute:
+    handler: handler.compute
+    events:
+      - sqs:
+          arn: arn:aws:sqs:us-east-1:255945442255:lovell-trigger-queue
+          batchSize: 10
+          maximumBatchingWindow: 60
+          functionResponseType: ReportBatchItemFailures
+
+
+plugins:
+  - serverless-offline
